@@ -1,0 +1,9 @@
+#!/bin/bash
+
+sudo dmesg -c > /dev/null
+make
+sudo insmod test_iova_module.ko
+
+dmesg | grep "moshe IOVA_BITMAP"
+sudo rmmod test_iova_module.ko
+
