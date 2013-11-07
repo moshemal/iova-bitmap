@@ -2,6 +2,11 @@
 
 sudo dmesg -c > /dev/null
 make
+if (( $? != 0 ));  
+then 
+  echo compile fail;
+  exit; 
+fi
 sudo insmod test_iova_module.ko
 
 dmesg | grep "moshe IOVA_BITMAP"
