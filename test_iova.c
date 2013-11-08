@@ -148,7 +148,32 @@ test_free__(struct iova_domain *iovad){
 */
 static int
 test_reserve(struct iova_domain *iovad){
-	return 0;
+	
+	ASSERT_TRUE(reserve_iova(iovad,127UL,127UL));
+  ASSERT_EQ_N(iovad->bitmap[0],0x3UL);
+  ASSERT_EQ_N(iovad->bitmap[1],0x0UL);
+  ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 0UL);
+  
+
+  ASSERT_TRUE(reserve_iova(iovad,120UL,123UL));
+  ASSERT_EQ_N(iovad->bitmap[0],0x1e3UL);
+  ASSERT_EQ_N(iovad->bitmap[1],0x0UL);
+  ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 0UL);
+
+  ASSERT_TRUE(reserve_iova(iovad,126UL,126UL));
+  ASSERT_TRUE(reserve_iova(iovad,125UL,125UL));
+  ASSERT_TRUE(reserve_iova(iovad,124UL,124UL));
+  ASSERT_TRUE(reserve_iova(iovad,119UL,119UL));
+  ASSERT_EQ_N(iovad->bitmap[0],0x3ffUL);
+  ASSERT_EQ_N(iovad->bitmap[1],0x0UL);
+  ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 0UL);
+
+  ASSERT_TRUE(reserve_iova(iovad,0UL,64UL));
+  ASSERT_EQ_N(iovad->bitmap[0],0x3ffUL);
+  ASSERT_EQ_N(iovad->bitmap[1],0xFFFFFFFFFFFFFFFFUL);
+  ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 1UL);
+
+  return 1;  
 }
 
 /* 
@@ -166,7 +191,7 @@ bitmap_test tests[] = {
   &test_alloc,
   &test_free,
   &test_free__,
-//  &test_reserve,
+  &test_reserve
 //  &test_copy_reserved
 };
 
@@ -179,6 +204,10 @@ runTestSuit(void){
 	init_iova_domain(&iovad, 1UL);
 
   printk(TEST_PERF "sizeof domain: %lu\n", sizeof(iovad.bitmap));
+  if (IOVA_DOMAIN_SIZE != 128){
+  	printk(TEST_PERF "this test suport only domain of size 128\neborting\n");
+  	return;
+  }
   for (i = 0; i < numberOfTests; ++i)
   {
   	int res;

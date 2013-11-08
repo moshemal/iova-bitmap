@@ -131,25 +131,19 @@ __free_iova(struct iova_domain *iovad, struct iova *iova){
 bool
 reserve_iova(struct iova_domain *iovad, unsigned long pfn_lo, unsigned long pfn_hi){
 	unsigned long flags;
-	unsigned long index_lo, index_hi, size, i;
+	unsigned long index_lo, size, i;
 
-	index_lo = toIndex(pfn_lo);
-	index_hi = toIndex(pfn_hi);
+	
+	if (pfn_lo > IOVA_DOMAIN_SIZE)
+    	return 1;
+    if (pfn_hi >= IOVA_DOMAIN_SIZE)
+    	pfn_hi = IOVA_DOMAIN_SIZE - 1;
+
+	index_lo = toIndex(pfn_hi);
     size = pfn_hi - pfn_lo + 1UL;
 
-    if (index_hi > IOVA_DOMAIN_SIZE)
-    	index_hi = IOVA_DOMAIN_SIZE;
-
-    if (pfn_lo > IOVA_DOMAIN_SIZE)
-    	return 1;
-
     spin_lock_irqsave(&iovad->iova_bitmap_lock, flags);
-	i  = find_next_bit(iovad->bitmap, size, index_lo);
-
-	if ( i <= index_hi){
-		spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
-		return 0;
-	}
+	
 	bitmap_set(iovad->bitmap, index_lo, size);
 	spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 	return 1;
