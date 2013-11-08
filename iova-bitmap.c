@@ -111,9 +111,15 @@ again:
 
 void
 free_iova(struct iova_domain *iovad, unsigned long pfn, unsigned long size){
-	unsigned long flags;
+	unsigned long flags, from;
+	
+	if (pfn + size > IOVA_DOMAIN_SIZE)
+		size =  IOVA_DOMAIN_SIZE - pfn;
+    
+    from = toIndex(pfn) - size + 1;
+
 	spin_lock_irqsave(&iovad->iova_bitmap_lock, flags);
-	bitmap_clear(iovad->bitmap, toIndex(pfn) - size, size);
+	bitmap_clear(iovad->bitmap, from, size);
 	spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 }
 
