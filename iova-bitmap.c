@@ -74,17 +74,19 @@ alloc_iova(struct iova_domain *iovad, unsigned long size,
 	spin_lock_irqsave(&iovad->iova_bitmap_lock, flags);
 
 again:
-	index = bitmap_find_next_zero_area(iovad->bitmap, IOVA_DOMAIN_SIZE, min_index, size, 0);
-
-	if (index > IOVA_DOMAIN_SIZE)
+	index = bitmap_find_next_zero_area(iovad->bitmap, IOVA_DOMAIN_SIZE + 1, min_index, size, 0);
+    
+	if (index > IOVA_DOMAIN_SIZE){
+		spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 		return 0;
+	}
+		
 
 	if (size_aligned)
 		pad_size = iova_get_pad_size(size, toPfn(index));
 
 	end = index + size + pad_size;
-
-	if (end > IOVA_DOMAIN_SIZE){
+	if (end > IOVA_DOMAIN_SIZE + 1){
 		spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 		return 0;
 	}
@@ -103,7 +105,6 @@ again:
 
 	index = end - size;
 	bitmap_set(iovad->bitmap, index, size);
-	
 	spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 	return 1;
 }
@@ -111,9 +112,8 @@ again:
 void
 free_iova(struct iova_domain *iovad, unsigned long pfn, unsigned long size){
 	unsigned long flags;
-
 	spin_lock_irqsave(&iovad->iova_bitmap_lock, flags);
-	bitmap_clear(iovad->bitmap, toIndex(pfn), size);
+	bitmap_clear(iovad->bitmap, toIndex(pfn) - size, size);
 	spin_unlock_irqrestore(&iovad->iova_bitmap_lock, flags);
 }
 

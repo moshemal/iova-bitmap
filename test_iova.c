@@ -58,12 +58,12 @@ static int
 test_alloc(struct iova_domain *iovad){
 	struct iova new_iova;
 
-	clearBitMap(iovad);
   ASSERT_TRUE(alloc_iova(iovad,1UL,-1,1,&new_iova));
   ASSERT_EQ_N(new_iova.pfn_lo, new_iova.pfn_hi);
   ASSERT_EQ_N(new_iova.pfn_lo, (IOVA_DOMAIN_SIZE - 1UL));
+  ASSERT_EQ_N(iovad->bitmap[0],0x3UL);
 
-  ASSERT_TRUE(alloc_iova(iovad,4UL,-1,1,&new_iova));
+  ASSERT_TRUE(alloc_iova(iovad,3UL,-1,1,&new_iova));
   ASSERT_EQ_N(new_iova.pfn_lo, 120UL);
   ASSERT_EQ_N(new_iova.pfn_hi, 123UL);
   ASSERT_EQ_N(iovad->bitmap[0],0x1e3UL);
@@ -77,6 +77,8 @@ test_alloc(struct iova_domain *iovad){
   ASSERT_TRUE(alloc_iova(iovad,1UL,-1,1,&new_iova));
   ASSERT_EQ_N(new_iova.pfn_lo, 119UL);
   
+  //try to alloc to long range
+  ASSERT_EQ_N(iovad->bitmap[0],0x3ffUL);
   ASSERT_FALSE(alloc_iova(iovad,128UL,-1,1,&new_iova));
   ASSERT_EQ_N(iovad->bitmap[0],0x3ffUL);
   ASSERT_EQ_N(iovad->bitmap[1],0UL);
@@ -90,7 +92,23 @@ test_alloc(struct iova_domain *iovad){
 */
 static int
 test_free(struct iova_domain *iovad){
-	return 0;
+  struct iova new_iova;
+	
+	ASSERT_TRUE(alloc_iova(iovad,128UL,-1,0,&new_iova));
+	ASSERT_EQ_N(iovad->bitmap[0], 0xFFFFFFFFFFFFFFFFUL);
+	ASSERT_EQ_N(iovad->bitmap[1], 0xFFFFFFFFFFFFFFFFUL);
+	ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 1UL);
+  
+	free_iova(iovad,0,1);
+	ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 0UL);
+	
+	free_iova(iovad,124UL,5UL);
+	ASSERT_EQ_N(iovad->bitmap[0], 0xFFFFFFFFFFFFFFE1UL);
+	
+	free_iova(iovad,1,32);
+	ASSERT_EQ_N(iovad->bitmap[1], 0xFFFFFFFFUL);	
+
+	return 1;
 }
 
 /* 
@@ -99,7 +117,29 @@ test_free(struct iova_domain *iovad){
 */
 static int
 test_free__(struct iova_domain *iovad){
-	return 0;
+	struct iova new_iova;
+	
+	ASSERT_TRUE(alloc_iova(iovad,128UL,-1,0,&new_iova));
+	ASSERT_EQ_N(iovad->bitmap[0], 0xFFFFFFFFFFFFFFFFUL);
+	ASSERT_EQ_N(iovad->bitmap[1], 0xFFFFFFFFFFFFFFFFUL);
+	ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 1UL);
+  
+  new_iova.pfn_lo = 0;
+  new_iova.pfn_hi = 0;
+	__free_iova(iovad,&new_iova);
+	ASSERT_EQ_N(iovad->bitmap[2] % 2UL, 0UL);
+
+	new_iova.pfn_lo = 124UL;
+  new_iova.pfn_hi = 128UL;
+	__free_iova(iovad,&new_iova);
+	ASSERT_EQ_N(iovad->bitmap[0], 0xFFFFFFFFFFFFFFE1UL);
+	
+	new_iova.pfn_lo = 1UL;
+  new_iova.pfn_hi = 32UL;
+	__free_iova(iovad,&new_iova);
+	ASSERT_EQ_N(iovad->bitmap[1], 0xFFFFFFFFUL);
+
+	return 1;
 }
 
 /* 
@@ -115,17 +155,17 @@ test_reserve(struct iova_domain *iovad){
 *  Testing:
 *   void copy_reserved_iova(struct iova_domain *from, struct iova_domain *to);
 */
-static int
-test_copy_reserved(struct iova_domain *iovad){
-	return 0;
-}
+// static int
+// test_copy_reserved(struct iova_domain *iovad){
+// 	return 0;
+// }
 
 
 static
 bitmap_test tests[] = {
-  &test_alloc
-//  &test_free,
-//  &test_free__,
+  &test_alloc,
+  &test_free,
+  &test_free__,
 //  &test_reserve,
 //  &test_copy_reserved
 };
@@ -134,16 +174,16 @@ static void
 runTestSuit(void){
 	int i, successes = 0;
 	struct iova_domain iovad;
-	printk(TEST_PERF "sizeof domain: %d\n", sizeof(iovad.bitmap));
 	int numberOfTests = sizeof(tests)/sizeof(bitmap_test);
-	char* resString;
-  
+	char* resString;	
 	init_iova_domain(&iovad, 1UL);
 
+  printk(TEST_PERF "sizeof domain: %lu\n", sizeof(iovad.bitmap));
   for (i = 0; i < numberOfTests; ++i)
   {
   	int res;
-  	printk(TEST_PERF "running test %d\n",i);	
+  	printk(TEST_PERF "running test %d\n",i + 1);
+  	clearBitMap(&iovad);	
   	res = tests[i](&iovad);
   	successes += res;
   	if (res)
@@ -152,7 +192,7 @@ runTestSuit(void){
   		printDomain(&iovad);
   		resString = "fail";
   	}
-  	printk(TEST_PERF "test: %d %s\n",i,resString);
+  	printk(TEST_PERF "test: %d %s\n",i + 1,resString);
 
   }
   printk(TEST_PERF "----------------------------------\n");
