@@ -180,10 +180,28 @@ test_reserve(struct iova_domain *iovad){
 *  Testing:
 *   void copy_reserved_iova(struct iova_domain *from, struct iova_domain *to);
 */
-// static int
-// test_copy_reserved(struct iova_domain *iovad){
-// 	return 0;
-// }
+static int
+test_copy_reserved(struct iova_domain *iovad){
+	struct iova_domain new_iovad;
+	init_iova_domain(&new_iovad, 1UL);
+  
+  ASSERT_TRUE(reserve_iova(iovad,127UL,127UL));
+  ASSERT_TRUE(reserve_iova(iovad,120UL,123UL));
+  
+  ASSERT_TRUE(reserve_iova(iovad,119UL,126UL));
+  ASSERT_TRUE(reserve_iova(iovad,0UL,64UL));
+
+  ASSERT_TRUE(reserve_iova(iovad,37UL,43UL));
+  
+  copy_reserved_iova(iovad, &new_iovad);
+
+  ASSERT_EQ_N(iovad->bitmap[0],new_iovad.bitmap[0]);
+  ASSERT_EQ_N(iovad->bitmap[1],new_iovad.bitmap[1]);
+  ASSERT_EQ_N(iovad->bitmap[2] % 2UL, new_iovad.bitmap[2] % 2UL);
+
+
+	return 1;
+}
 
 
 static
@@ -191,8 +209,8 @@ bitmap_test tests[] = {
   &test_alloc,
   &test_free,
   &test_free__,
-  &test_reserve
-//  &test_copy_reserved
+  &test_reserve,
+  &test_copy_reserved
 };
 
 static void

@@ -131,7 +131,7 @@ __free_iova(struct iova_domain *iovad, struct iova *iova){
 bool
 reserve_iova(struct iova_domain *iovad, unsigned long pfn_lo, unsigned long pfn_hi){
 	unsigned long flags;
-	unsigned long index_lo, size, i;
+	unsigned long index_lo, size;
 
 	
 	if (pfn_lo > IOVA_DOMAIN_SIZE)
@@ -151,5 +151,14 @@ reserve_iova(struct iova_domain *iovad, unsigned long pfn_lo, unsigned long pfn_
 
 void
 copy_reserved_iova(struct iova_domain *from, struct iova_domain *to){
-    bitmap_copy(to->bitmap, from->bitmap, IOVA_DOMAIN_SIZE + 1);
+	unsigned long flags_from;
+	unsigned long flags_to;
+
+	spin_lock_irqsave(&from->iova_bitmap_lock, flags_from);
+      spin_lock_irqsave(&to->iova_bitmap_lock, flags_to);
+        
+        bitmap_copy(to->bitmap, from->bitmap, IOVA_DOMAIN_SIZE + 1);
+      
+      spin_unlock_irqrestore(&to->iova_bitmap_lock, flags_to);
+    spin_unlock_irqrestore(&from->iova_bitmap_lock, flags_from);
 }
